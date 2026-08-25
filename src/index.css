@@ -1,0 +1,199 @@
+/* ============================================================
+   Tokens — a prism splits white light, so the page is neutral
+   glass with a violet→cyan→amber spectrum used only where it
+   means something.
+   ============================================================ */
+:root {
+  --ink: #05060a;
+  --ink-2: #080a11;
+  --raised: #0c0f18;
+
+  --bone: #ecebf3;
+  --haze: #9199b4;
+  --dim: #626a83;
+
+  --edge: rgba(236, 235, 243, 0.09);
+  --edge-2: rgba(236, 235, 243, 0.2);
+
+  --violet: #7b5cff;
+  --cyan: #49c8f5;
+  --amber: #ff8a3d;
+  --spectrum: linear-gradient(90deg, var(--violet), var(--cyan), var(--amber));
+  --spectrum-v: linear-gradient(180deg, var(--violet), var(--cyan), var(--amber));
+
+  --display: 'Bricolage Grotesque', 'Trebuchet MS', system-ui, sans-serif;
+  --body: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Martian Mono', ui-monospace, 'SF Mono', 'Courier New', monospace;
+
+  --gut: clamp(20px, 5vw, 72px);
+  --max: 1140px;
+  --ease: cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--bone);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.028em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0 0 1.05em;
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul,
+ol,
+dl,
+dd {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+::selection {
+  background: rgba(123, 92, 255, 0.35);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ── Shared primitives ─────────────────────────────────────── */
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.spectrum-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--spectrum);
+  flex: none;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 20px, 0);
+  transition:
+    opacity 0.75s var(--ease),
+    transform 0.75s var(--ease);
+}
+
+.reveal.is-shown {
+  opacity: 1;
+  transform: none;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 13px 22px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  border: 1px solid transparent;
+  transition:
+    transform 0.35s var(--ease),
+    background-color 0.35s var(--ease),
+    border-color 0.35s var(--ease),
+    color 0.35s var(--ease);
+}
+
+.btn-solid {
+  background: var(--bone);
+  color: #06070c;
+}
+
+.btn-ghost {
+  border-color: var(--edge-2);
+  color: var(--bone);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn-ghost:hover {
+  background: rgba(236, 235, 243, 0.06);
+  border-color: rgba(236, 235, 243, 0.42);
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 12px 18px;
+  background: var(--bone);
+  color: #06070c;
+  font-size: 14px;
+}
+
+.skip:focus {
+  left: 12px;
+  top: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
