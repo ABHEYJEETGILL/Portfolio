@@ -35,6 +35,9 @@ function Split({ text, delay = 0 }) {
 export default function App() {
   const [scrolled, setScrolled] = useState(false);
   const [stillPrism, setStillPrism] = useState(false);
+  // Compiling the raymarch shader blocks the main thread for a beat. Mounting
+  // the prism after first paint lets the hero text render immediately.
+  const [prismReady, setPrismReady] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -44,11 +47,40 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const idle =
+      window.requestIdleCallback || (cb => window.setTimeout(cb, 200));
+    const cancel =
+      window.cancelIdleCallback || window.clearTimeout;
+    const handle = idle(() => setPrismReady(true), { timeout: 600 });
+    return () => cancel(handle);
+  }, []);
+
+  useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     const sync = () => setStillPrism(mq.matches);
     sync();
     mq.addEventListener?.('change', sync);
     return () => mq.removeEventListener?.('change', sync);
+  }, []);
+
+  // The hero animation runs once, in the real typeface. Without this gate the
+  // fallback face paints, animates, then reflows when Bricolage arrives —
+  // which reads as a stutter at 166px. Capped so a slow font never blocks.
+  const [fontsReady, setFontsReady] = useState(false);
+  useEffect(() => {
+    let settled = false;
+    const go = () => {
+      if (settled) return;
+      settled = true;
+      setFontsReady(true);
+    };
+    const timer = setTimeout(go, 1200);
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(go).catch(go);
+    } else {
+      go();
+    }
+    return () => clearTimeout(timer);
   }, []);
 
   // The prism shader is fill-rate bound: cost scales with pixels × raymarch
@@ -106,8 +138,9 @@ export default function App() {
 
       <main id="top">
         {/* ── Hero ─────────────────────────────────────────────── */}
-        <section className="hero">
+        <section className={`hero ${fontsReady ? 'is-ready' : ''}`}>
           <div className="hero-prism" aria-hidden="true">
+            {prismReady ? (
             <Prism
               animationType="rotate"
               timeScale={stillPrism ? 0 : 0.5}
@@ -122,6 +155,7 @@ export default function App() {
               maxDpr={quality.maxDpr}
               steps={quality.steps}
             />
+            ) : null}
           </div>
           <div className="hero-veil" aria-hidden="true" />
 
