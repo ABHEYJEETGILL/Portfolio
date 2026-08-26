@@ -1,359 +1,760 @@
-import { useEffect, useMemo, useState } from 'react';
-import Prism from './components/Prism';
-import Reveal from './components/Reveal';
-import { profile, about, projects, toolkit, education, awards } from './data';
-import './App.css';
-
-const SECTIONS = [
-  ['work', 'Work'],
-  ['toolkit', 'Toolkit'],
-  ['background', 'Background'],
-  ['contact', 'Contact']
-];
-
-function SectionHead({ label, title, lead }) {
-  return (
-    <Reveal className="sec-head">
-      <span className="eyebrow">
-        <i className="spectrum-dot" aria-hidden="true" />
-        {label}
-      </span>
-      <h2 className="sec-title">{title}</h2>
-      {lead ? <p className="sec-lead">{lead}</p> : null}
-    </Reveal>
-  );
+/* ============================================================
+   Nav
+   ============================================================ */
+.nav {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px var(--gut);
+  border-bottom: 1px solid transparent;
+  transition:
+    background-color 0.4s var(--ease),
+    border-color 0.4s var(--ease),
+    backdrop-filter 0.4s var(--ease);
 }
 
-function Split({ text, delay = 0 }) {
-  return (
-    <span className="split" data-text={text} style={{ animationDelay: `${delay}ms` }}>
-      {text}
-    </span>
-  );
+.nav.is-stuck {
+  background: rgba(5, 6, 10, 0.72);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  border-bottom-color: var(--edge);
 }
 
-export default function App() {
-  const [scrolled, setScrolled] = useState(false);
-  const [stillPrism, setStillPrism] = useState(false);
-  // Compiling the raymarch shader blocks the main thread for a beat. Mounting
-  // the prism after first paint lets the hero text render immediately.
-  const [prismReady, setPrismReady] = useState(false);
+.nav-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--bone);
+}
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+.nav-glyph {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  transition: transform 0.5s var(--ease);
+}
 
-  useEffect(() => {
-    const idle =
-      window.requestIdleCallback || (cb => window.setTimeout(cb, 200));
-    const cancel =
-      window.cancelIdleCallback || window.clearTimeout;
-    const handle = idle(() => setPrismReady(true), { timeout: 600 });
-    return () => cancel(handle);
-  }, []);
+.nav-mark:hover .nav-glyph {
+  transform: rotate(-8deg);
+}
 
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const sync = () => setStillPrism(mq.matches);
-    sync();
-    mq.addEventListener?.('change', sync);
-    return () => mq.removeEventListener?.('change', sync);
-  }, []);
+.nav-mark span {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
 
-  // The hero animation runs once, in the real typeface. Without this gate the
-  // fallback face paints, animates, then reflows when Bricolage arrives —
-  // which reads as a stutter at 166px. Capped so a slow font never blocks.
-  const [fontsReady, setFontsReady] = useState(false);
-  useEffect(() => {
-    let settled = false;
-    const go = () => {
-      if (settled) return;
-      settled = true;
-      setFontsReady(true);
-    };
-    const timer = setTimeout(go, 1200);
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(go).catch(go);
-    } else {
-      go();
-    }
-    return () => clearTimeout(timer);
-  }, []);
+/* Availability is the one thing worth carrying at every scroll position.
+   Green appears nowhere else on the page — it's status, not decoration. */
+.nav-status {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+  margin-left: 26px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--haze);
+}
 
-  // The prism shader is fill-rate bound: cost scales with pixels × raymarch
-  // steps. Phones and low-core laptops get a cheaper version of the same look.
-  const quality = useMemo(() => {
-    if (typeof window === 'undefined') return { maxDpr: 1, steps: 64 };
-    const touch = window.matchMedia('(pointer: coarse)').matches;
-    const cores = navigator.hardwareConcurrency || 4;
-    if (touch || cores <= 4) return { maxDpr: 1, steps: 48 };
-    if (cores <= 8) return { maxDpr: 1.25, steps: 64 };
-    return { maxDpr: 1.5, steps: 80 };
-  }, []);
+.nav-status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: #4ade80;
+  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6);
+  animation: ping 2.4s ease-out infinite;
+}
 
-  return (
-    <>
-      <a className="skip" href="#work">
-        Skip to work
-      </a>
+@keyframes ping {
+  70%,
+  100% {
+    box-shadow: 0 0 0 7px rgba(74, 222, 128, 0);
+  }
+}
 
-      <header className={`nav ${scrolled ? 'is-stuck' : ''}`}>
-        <a className="nav-mark" href="#top" aria-label="Back to top">
-          <svg className="nav-glyph" viewBox="0 0 64 64" aria-hidden="true">
-            <defs>
-              <linearGradient id="navSpectrum" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#7B5CFF" />
-                <stop offset="50%" stopColor="#49C8F5" />
-                <stop offset="100%" stopColor="#FF8A3D" />
-              </linearGradient>
-            </defs>
-            <path
-              d="M32 14 L48 46 H16 Z"
-              fill="none"
-              stroke="url(#navSpectrum)"
-              strokeWidth="5"
-              strokeLinejoin="round"
-            />
-            <path d="M6 32 H17" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" opacity="0.85" />
-            <path d="M47 32 H58" stroke="url(#navSpectrum)" strokeWidth="4.5" strokeLinecap="round" />
-          </svg>
-          <span>Abheyjeet Gill</span>
-        </a>
+@media (min-width: 900px) {
+  .nav-status {
+    display: inline-flex;
+  }
+}
 
-        <span className="nav-status">
-          <i aria-hidden="true" />
-          Open to Summer 2027
-        </span>
-        <nav className="nav-links" aria-label="Sections">
-          {SECTIONS.map(([id, label]) => (
-            <a key={id} href={`#${id}`}>
-              {label}
-            </a>
-          ))}
-        </nav>
-      </header>
+.nav-links {
+  display: flex;
+  gap: 26px;
+}
 
-      <main id="top">
-        {/* ── Hero ─────────────────────────────────────────────── */}
-        <section className={`hero ${fontsReady ? 'is-ready' : ''}`}>
-          <div className="hero-prism" aria-hidden="true">
-            {prismReady ? (
-            <Prism
-              animationType="rotate"
-              timeScale={stillPrism ? 0 : 0.5}
-              height={3.5}
-              baseWidth={5.5}
-              scale={3.6}
-              hueShift={0}
-              colorFrequency={1}
-              noise={0}
-              glow={1}
-              suspendWhenOffscreen
-              maxDpr={quality.maxDpr}
-              steps={quality.steps}
-            />
-            ) : null}
-          </div>
-          <div className="hero-veil" aria-hidden="true" />
+.nav-links a {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  transition: color 0.3s var(--ease);
+}
 
-          <div className="hero-inner">
-            <p className="hero-eyebrow">{profile.eyebrow}</p>
-            <h1 className="hero-name">
-              <Split text={profile.first} />
-              <Split text={profile.last} delay={140} />
-            </h1>
-            <p className="hero-thesis">{profile.thesis}</p>
-            <div className="hero-actions">
-              <a className="btn btn-solid" href="#work">
-                See what I’ve shipped
-              </a>
-              <a className="btn btn-ghost" href={`mailto:${profile.email}`}>
-                Email me
-              </a>
-            </div>
-          </div>
+.nav-links a:hover {
+  color: var(--bone);
+}
 
-          <a className="hero-cue" href="#about" aria-label="Scroll to about">
-            <span>Scroll</span>
-            <i aria-hidden="true" />
-          </a>
-        </section>
+@media (max-width: 620px) {
+  .nav-links {
+    gap: 16px;
+  }
+  .nav-links a {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+  .nav-mark span {
+    font-size: 10px;
+  }
+}
 
-        {/* ── About ────────────────────────────────────────────── */}
-        <section className="section about" id="about">
-          <div className="about-grid">
-            <Reveal className="about-copy">
-              {about.paragraphs.map((p, i) => (
-                <p key={i} className={i === 0 ? 'lede' : ''}>
-                  {p}
-                </p>
-              ))}
-            </Reveal>
-            <Reveal className="about-now" delay={80}>
-              <span className="eyebrow">Right now</span>
-              <dl>
-                {about.now.map(([k, v]) => (
-                  <div key={k} className="now-row">
-                    <dt>{k}</dt>
-                    <dd>{v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </Reveal>
-          </div>
-        </section>
+/* ============================================================
+   Hero — the prism is the thesis: one beam in, a spectrum out.
+   The name arrives split into violet and amber ghosts and
+   converges, the way light does when it leaves the glass.
+   ============================================================ */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 132px var(--gut) 108px;
+  overflow: hidden;
+  isolation: isolate;
+}
 
-        {/* ── Work ─────────────────────────────────────────────── */}
-        <section className="section work" id="work">
-          <SectionHead
-            label="work"
-            title="Three things I built by myself"
-            lead="Every one of these went from empty repo to something a person could actually use."
-          />
+.hero-prism {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  opacity: 0;
+  animation: prism-in 1.8s var(--ease) 0.1s forwards;
+  /* contain keeps the canvas from being repainted by anything outside it */
+  contain: strict;
+}
 
-          <div className="work-list">
-            {projects.map((p, i) => (
-              <Reveal
-                key={p.id}
-                as="article"
-                delay={i * 60}
-                className={`card ${p.featured ? 'card-featured' : ''}`}
-              >
-                <span className="card-edge" aria-hidden="true" />
+.hero-veil {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(125% 85% at 50% 46%, rgba(5, 6, 10, 0) 0%, rgba(5, 6, 10, 0.42) 58%, rgba(5, 6, 10, 0.92) 100%),
+    linear-gradient(180deg, rgba(5, 6, 10, 0.8) 0%, rgba(5, 6, 10, 0) 24%, rgba(5, 6, 10, 0) 52%, var(--ink) 97%);
+}
 
-                <div className="card-status">
-                  {p.status.map(s => (
-                    <span key={s}>{s}</span>
-                  ))}
-                </div>
+.hero-inner {
+  position: relative;
+  width: 100%;
+  max-width: var(--max);
+  margin: 0 auto;
+}
 
-                <h3 className="card-name">
-                  {p.name}
-                  {p.href ? (
-                    <a className="card-link" href={p.href} target="_blank" rel="noreferrer">
-                      {p.hrefLabel}
-                      <svg viewBox="0 0 14 14" aria-hidden="true">
-                        <path d="M4 10 10 4M5 4h5v5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-                      </svg>
-                    </a>
-                  ) : null}
-                </h3>
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--haze);
+  margin: 0 0 26px;
+  opacity: 0;
+}
 
-                <p className="card-tagline">{p.tagline}</p>
+.hero.is-ready .hero-eyebrow {
+  animation: rise 0.9s var(--ease) both;
+}
 
-                <div className="card-body">
-                  {p.body.map((t, j) => (
-                    <p key={j}>{t}</p>
-                  ))}
-                </div>
+@keyframes prism-in {
+  to {
+    opacity: 1;
+  }
+}
 
-                {p.metrics ? (
-                  <div className="card-metrics">
-                    {p.metrics.map(([value, label]) => (
-                      <div key={label}>
-                        <strong>{value}</strong>
-                        <span>{label}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
+.hero-name {
+  font-size: clamp(54px, 12.5vw, 166px);
+  font-weight: 800;
+  line-height: 0.86;
+  letter-spacing: -0.05em;
+  margin: 0 0 30px;
+}
 
-                <ul className="chips">
-                  {p.stack.map(s => (
-                    <li key={s}>{s}</li>
-                  ))}
-                </ul>
-              </Reveal>
-            ))}
-          </div>
-        </section>
+.split {
+  position: relative;
+  display: block;
+  opacity: 0;
+}
 
-        {/* ── Toolkit ──────────────────────────────────────────── */}
-        <section className="section toolkit" id="toolkit">
-          <SectionHead label="toolkit" title="What I reach for" />
-          <div className="tool-grid">
-            {toolkit.map((group, i) => (
-              <Reveal key={group.label} className="tool-col" delay={i * 60}>
-                <h3>{group.label}</h3>
-                <ul>
-                  {group.items.map(item => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </Reveal>
-            ))}
-          </div>
-        </section>
+.hero.is-ready .split {
+  animation: rise 1s var(--ease) both;
+}
 
-        {/* ── Background ───────────────────────────────────────── */}
-        <section className="section background" id="background">
-          <SectionHead label="background" title="Where I’ve been" />
-          <div className="bg-grid">
-            <Reveal className="bg-col">
-              <h3 className="bg-col-title">Education</h3>
-              <ol className="timeline">
-                {education.map(e => (
-                  <li key={e.what}>
-                    <span className="tl-when">{e.when}</span>
-                    <div className="tl-body">
-                      <strong>{e.what}</strong>
-                      <span>{e.detail}</span>
-                      {e.note ? <em>{e.note}</em> : null}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </Reveal>
+.hero.is-ready .split::before,
+.hero.is-ready .split::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
 
-            <Reveal className="bg-col" delay={80}>
-              <h3 className="bg-col-title">Awards</h3>
-              <ol className="timeline">
-                {awards.map(a => (
-                  <li key={a.what}>
-                    <span className="tl-when">{a.when}</span>
-                    <div className="tl-body">
-                      <strong>{a.what}</strong>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </Reveal>
-          </div>
-        </section>
+.split::before {
+  color: var(--violet);
+  animation: converge-left 1.7s var(--ease) both;
+  animation-delay: inherit;
+}
 
-        {/* ── Contact ──────────────────────────────────────────── */}
-        <section className="section contact" id="contact">
-          <Reveal>
-            <span className="eyebrow">
-              <i className="spectrum-dot" aria-hidden="true" />
-              contact
-            </span>
-            <p className="contact-ask">
-              I’m looking for a Summer 2027 internship in software or security. If that’s something you
-              have, I’d like to hear about it.
-            </p>
-            <a className="contact-mail" href={`mailto:${profile.email}`}>
-              {profile.email}
-            </a>
-            <div className="contact-links">
-              <a href={profile.github} target="_blank" rel="noreferrer">
-                GitHub / {profile.githubHandle}
-              </a>
-              <a href={profile.linkedin} target="_blank" rel="noreferrer">
-                LinkedIn / {profile.linkedinHandle}
-              </a>
-            </div>
-          </Reveal>
-        </section>
-      </main>
+.split::after {
+  color: var(--amber);
+  animation: converge-right 1.7s var(--ease) both;
+  animation-delay: inherit;
+}
 
-      <footer className="foot">
-        <span>{profile.location}</span>
-        <span>Built solo · React, Vite, WebGL</span>
-      </footer>
-    </>
-  );
+@keyframes converge-left {
+  0% {
+    transform: translate3d(-0.34em, 0, 0);
+    filter: blur(14px);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate3d(-0.012em, 0, 0);
+    filter: blur(0);
+    opacity: 0.5;
+  }
+}
+
+@keyframes converge-right {
+  0% {
+    transform: translate3d(0.34em, 0, 0);
+    filter: blur(14px);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate3d(0.012em, 0, 0);
+    filter: blur(0);
+    opacity: 0.5;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hero-thesis {
+  max-width: 34ch;
+  font-size: clamp(17px, 1.7vw, 21px);
+  line-height: 1.5;
+  color: var(--haze);
+  margin: 0 0 38px;
+  opacity: 0;
+}
+
+.hero.is-ready .hero-thesis {
+  animation: rise 1s var(--ease) 0.32s both;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  opacity: 0;
+}
+
+.hero.is-ready .hero-actions {
+  animation: rise 1s var(--ease) 0.44s both;
+}
+
+.hero-cue {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  opacity: 0;
+}
+
+.hero.is-ready .hero-cue {
+  animation: rise 1s var(--ease) 0.7s both;
+}
+
+.hero-cue i {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(180deg, var(--edge-2), transparent);
+}
+
+@media (max-width: 620px) {
+  .hero-cue {
+    display: none;
+  }
+}
+
+/* ============================================================
+   Section shell
+   ============================================================ */
+.section {
+  position: relative;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: clamp(84px, 11vw, 148px) var(--gut);
+}
+
+.sec-head {
+  margin-bottom: clamp(38px, 5vw, 64px);
+}
+
+.sec-title {
+  font-size: clamp(30px, 4.4vw, 52px);
+  margin: 16px 0 0;
+  max-width: 20ch;
+}
+
+.sec-lead {
+  margin: 16px 0 0;
+  max-width: 52ch;
+  color: var(--haze);
+  font-size: 16.5px;
+}
+
+/* ============================================================
+   About
+   ============================================================ */
+.about-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: clamp(32px, 6vw, 88px);
+  align-items: start;
+}
+
+.about-copy p {
+  color: var(--haze);
+  font-size: 16.5px;
+}
+
+.about-copy .lede {
+  color: var(--bone);
+  font-size: clamp(19px, 2.2vw, 25px);
+  line-height: 1.44;
+  letter-spacing: -0.017em;
+  margin-bottom: 1.1em;
+}
+
+.about-now {
+  border-top: 1px solid var(--edge);
+  padding-top: 22px;
+}
+
+.about-now dl {
+  margin-top: 18px;
+}
+
+.now-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--edge);
+}
+
+.now-row dt {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding-top: 3px;
+}
+
+.now-row dd {
+  font-size: 15px;
+  color: var(--bone);
+  line-height: 1.45;
+}
+
+@media (max-width: 880px) {
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   Work
+   ============================================================ */
+.work-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--raised), var(--ink-2));
+  border: 1px solid var(--edge);
+  border-radius: 18px;
+  padding: clamp(26px, 3.4vw, 42px);
+  transition:
+    transform 0.5s var(--ease),
+    border-color 0.5s var(--ease),
+    opacity 0.75s var(--ease);
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: var(--edge-2);
+}
+
+.card-edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--spectrum-v);
+  opacity: 0.22;
+  transition: opacity 0.5s var(--ease);
+}
+
+.card:hover .card-edge {
+  opacity: 1;
+}
+
+.card-featured {
+  grid-column: 1 / -1;
+}
+
+.card-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 20px;
+}
+
+.card-status span + span::before {
+  content: '·';
+  margin-right: 14px;
+  color: var(--edge-2);
+}
+
+.card-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 16px;
+  font-size: clamp(25px, 3vw, 38px);
+  margin-bottom: 10px;
+}
+
+.card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--cyan);
+  border-bottom: 1px solid rgba(73, 200, 245, 0.35);
+  padding-bottom: 2px;
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+
+.card-link svg {
+  width: 12px;
+  height: 12px;
+}
+
+.card-link:hover {
+  color: var(--bone);
+  border-bottom-color: var(--bone);
+}
+
+.card-tagline {
+  font-size: 16.5px;
+  color: var(--bone);
+  margin-bottom: 18px;
+  max-width: 46ch;
+}
+
+.card-body p {
+  color: var(--haze);
+  font-size: 15.5px;
+  max-width: 62ch;
+}
+
+.card-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 44px;
+  padding: 22px 0;
+  margin: 6px 0 22px;
+  border-top: 1px solid var(--edge);
+  border-bottom: 1px solid var(--edge);
+}
+
+.card-metrics div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-metrics strong {
+  font-family: var(--display);
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.card-metrics span {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 22px;
+}
+
+.chips li {
+  padding: 5px 11px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  color: var(--haze);
+}
+
+@media (max-width: 880px) {
+  .work-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   Toolkit
+   ============================================================ */
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--edge);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.tool-col {
+  background: var(--ink);
+  padding: 28px 24px 32px;
+}
+
+.tool-col h3 {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 18px;
+}
+
+.tool-col li {
+  font-size: 15px;
+  color: var(--bone);
+  padding: 6px 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 880px) {
+  .tool-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .tool-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   Background — dates carry real order here, so they lead.
+   ============================================================ */
+.bg-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(36px, 6vw, 80px);
+}
+
+.bg-col-title {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 20px;
+}
+
+.timeline li {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 18px;
+  padding: 20px 0;
+  border-top: 1px solid var(--edge);
+}
+
+.tl-when {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  color: var(--dim);
+  padding-top: 4px;
+}
+
+.tl-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tl-body strong {
+  font-size: 16.5px;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+}
+
+.tl-body span {
+  font-size: 14.5px;
+  color: var(--haze);
+  line-height: 1.5;
+}
+
+.tl-body em {
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-top: 3px;
+}
+
+@media (max-width: 880px) {
+  .bg-grid {
+    grid-template-columns: 1fr;
+  }
+  .timeline li {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 14px;
+  }
+}
+
+/* ============================================================
+   Contact
+   ============================================================ */
+.contact {
+  border-top: 1px solid var(--edge);
+}
+
+.contact-ask {
+  max-width: 30ch;
+  font-size: clamp(22px, 3.4vw, 40px);
+  font-family: var(--display);
+  font-weight: 700;
+  line-height: 1.14;
+  letter-spacing: -0.03em;
+  margin: 18px 0 34px;
+}
+
+.contact-mail {
+  display: inline-block;
+  font-size: clamp(16px, 2.6vw, 27px);
+  letter-spacing: -0.02em;
+  padding-bottom: 8px;
+  background-image: var(--spectrum);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 1px;
+  transition: background-size 0.5s var(--ease);
+  word-break: break-word;
+}
+
+.contact-mail:hover {
+  background-size: 100% 2px;
+}
+
+.contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 30px;
+  margin-top: 34px;
+}
+
+.contact-links a {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--haze);
+  transition: color 0.3s var(--ease);
+}
+
+.contact-links a:hover {
+  color: var(--bone);
+}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 24px;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 26px var(--gut) 44px;
+  border-top: 1px solid var(--edge);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
 }
